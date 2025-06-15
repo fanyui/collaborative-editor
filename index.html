@@ -210,6 +210,7 @@
                     this.localVersion = 0;
                     this.pendingOperations = [];
                     this.isApplyingRemoteChange = false;
+                    this.remoteSelections = {}; // Added this line
 
                     this.initializeEditor();
                     this.initializeWebSocket();
@@ -244,7 +245,32 @@
                 // Handle cursor changes
                 this.editor.on('cursorActivity', () => {
                     if (this.isApplyingRemoteChange) return;
-                    this.sendCursorPosition();
+
+                    if (this.editor.somethingSelected()) {
+                        const startPos = this.editor.getCursor('start');
+                        const endPos = this.editor.getCursor('end');
+                        const selectionStart = this.editor.indexFromPos(startPos);
+                        const selectionEnd = this.editor.indexFromPos(endPos);
+
+                        this.sendOperation({
+                            type: 'selection',
+                            selectionStart: selectionStart,
+                            selectionEnd: selectionEnd,
+                            clientId: this.clientId
+                        });
+                    } else {
+                        // Send regular cursor position if no selection
+                        this.sendCursorPosition();
+
+                        // Also send a "clear selection" message for this client if they previously had one.
+                        // This ensures remote highlights are removed when selection is cleared locally.
+                         this.sendOperation({
+                            type: 'selection',
+                            selectionStart: this.editor.indexFromPos(this.editor.getCursor()), // current cursor pos
+                            selectionEnd: this.editor.indexFromPos(this.editor.getCursor()),   // same as start
+                            clientId: this.clientId
+                        });
+                    }
                 });
             }
 
@@ -377,6 +403,14 @@
 
                             case 'cursor':
                                 this.updateRemoteCursor(operation.clientId, operation.position);
+                                // Potentially clear any selection from this client if we receive a cursor update
+                                if (this.remoteSelections[operation.clientId]) {
+                                    this.remoteSelections[operation.clientId].clear();
+                                    delete this.remoteSelections[operation.clientId];
+                                }
+                                break;
+                            case 'selection':
+                                this.updateRemoteSelection(operation.clientId, operation.selectionStart, operation.selectionEnd);
                                 break;
                         }
                     } finally {
@@ -420,6 +454,29 @@
                         cursor.remove();
                     }
                 }, 3000);
+                }
+
+                updateRemoteSelection(clientId, selectionStart, selectionEnd) {
+                    // Don't show our own selection mirrored back
+                    if (clientId === this.clientId) return;
+
+                    // Clear existing selection for this client
+                    if (this.remoteSelections[clientId]) {
+                        this.remoteSelections[clientId].clear();
+                        delete this.remoteSelections[clientId];
+                    }
+
+                    // If selectionStart and selectionEnd are different, it's a new selection
+                    if (selectionStart !== selectionEnd) {
+                        const fromPos = this.editor.posFromIndex(selectionStart);
+                        const toPos = this.editor.posFromIndex(selectionEnd);
+                        const color = this.getClientColor(clientId);
+
+                        this.remoteSelections[clientId] = this.editor.markText(fromPos, toPos, {
+                            css: `background-color: ${color}; opacity: 0.5;`, // Example styling
+                            title: clientId // Show client ID on hover (optional)
+                        });
+                    }
             }
 
                 getClientColor(clientId) {
