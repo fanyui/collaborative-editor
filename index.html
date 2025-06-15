@@ -6,6 +6,13 @@
     <title>Collaborative Editor</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/anyword-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/go/go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/vim/vim.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -199,9 +206,6 @@
             </div>
         </div>
     
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/markdown/markdown.min.js"></script>
-    
         <script>
             class CollaborativeEditor {
                 constructor() {
@@ -219,7 +223,7 @@
 
                 initializeEditor() {
                     this.editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
-                        mode: 'markdown',
+                        mode: 'go', // Changed from 'markdown'
                         theme: 'material',
                         lineNumbers: true,
                         lineWrapping: true,
@@ -228,7 +232,9 @@
                         autoCloseBrackets: true,
                         matchBrackets: true,
                         styleActiveLine: true,
-                        viewportMargin: Infinity
+                        viewportMargin: Infinity,
+                        extraKeys: { "Ctrl-Space": "autocomplete" }, // Added
+                        hintOptions: { completeSingle: false } // Added
                     });
 
                     // Handle local changes
