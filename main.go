@@ -16,6 +16,8 @@ type Operation struct {
 	Position int    `json:"position"`
 	Text     string `json:"text,omitempty"`
 	Length   int    `json:"length,omitempty"`
+	SelectionStart int `json:"selectionStart,omitempty"`
+	SelectionEnd   int `json:"selectionEnd,omitempty"`
 	Version  int    `json:"version"`
 	ClientID string `json:"clientId"`
 }
