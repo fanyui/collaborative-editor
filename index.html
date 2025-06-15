@@ -1,280 +1,457 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collaborative CodeMirror Editor</title>
-    <script src="./dist/cm6.bundle.js"></script>
-
+    <title>Collaborative Editor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material.min.css">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
-            background: #f5f5f5;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
         }
 
         .header {
-            background: #2563eb;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
             color: white;
-            padding: 15px 20px;
+            padding: 20px 30px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            font-weight: 300;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-icon {
+            width: 32px;
+            height: 32px;
+            background: #3498db;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 12px 30px;
+            border-bottom: 1px solid #e9ecef;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-size: 0.9em;
+            color: #6c757d;
         }
 
-        .status {
+        .connection-status {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .status-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #10b981;
+            background: #dc3545;
+            animation: pulse 2s infinite;
         }
 
-        .status-dot.disconnected {
-            background: #ef4444;
+        .status-dot.connected {
+            background: #28a745;
         }
 
-        .user-input {
-            margin-bottom: 10px;
-        }
-
-        .user-input input {
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            margin-right: 10px;
-        }
-
-        .user-input button {
-            padding: 8px 16px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .user-input button:hover {
-            background: #1d4ed8;
-        }
-
-        .user-input button:disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         .editor-container {
-            border: 1px solid #e5e7eb;
-            min-height: 500px;
+            position: relative;
+            background: #263238;
         }
 
-        .cm-editor {
-            height: 500px;
+        .CodeMirror {
+            height: 600px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
         }
 
-        .cm-focused {
-            outline: none;
+        .CodeMirror-linenumber {
+            color: #546e7a !important;
+            padding: 0 8px 0 0 !important;
         }
 
-        /* Remote cursor styles */
-        .cm-remote-cursor {
+        .CodeMirror-gutters {
+            background: #37474f !important;
+            border-right: 1px solid #455a64 !important;
+        }
+
+        .collaborative-cursor {
             position: absolute;
             border-left: 2px solid;
             height: 1.2em;
-            pointer-events: none;
             z-index: 100;
-        }
-
-        .cm-remote-cursor-0 {
-            border-color: #ef4444;
-        }
-
-        .cm-remote-cursor-1 {
-            border-color: #10b981;
-        }
-
-        .cm-remote-cursor-2 {
-            border-color: #f59e0b;
-        }
-
-        .cm-remote-cursor-3 {
-            border-color: #8b5cf6;
-        }
-
-        .cm-remote-cursor-4 {
-            border-color: #06b6d4;
-        }
-
-        .cm-remote-selection {
-            background-color: rgba(59, 130, 246, 0.2);
             pointer-events: none;
         }
 
-        .cm-remote-selection-0 {
-            background-color: rgba(239, 68, 68, 0.2);
-        }
-
-        .cm-remote-selection-1 {
-            background-color: rgba(16, 185, 129, 0.2);
-        }
-
-        .cm-remote-selection-2 {
-            background-color: rgba(245, 158, 11, 0.2);
-        }
-
-        .cm-remote-selection-3 {
-            background-color: rgba(139, 92, 246, 0.2);
-        }
-
-        .cm-remote-selection-4 {
-            background-color: rgba(6, 182, 212, 0.2);
-        }
-
-        .cursor-tooltip {
-            background: rgba(0, 0, 0, 0.8);
+        .cursor-label {
+            position: absolute;
+            top: -20px;
+            left: -2px;
+            background: rgba(0,0,0,0.8);
             color: white;
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 11px;
-            position: absolute;
-            top: -25px;
-            left: 0;
             white-space: nowrap;
             pointer-events: none;
-            z-index: 1000;
         }
 
-        .cursor-tooltip::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            border: 4px solid transparent;
-            border-top-color: rgba(0, 0, 0, 0.8);
+        .footer {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9em;
         }
 
-        .users-list {
-            padding: 15px 20px;
-            background: #f9fafb;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .user-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            margin-right: 15px;
-            padding: 4px 8px;
-            background: white;
-            border-radius: 12px;
-            font-size: 12px;
-        }
-
-        .user-color {
-            width: 8px;
-            height: 8px;
+        .user-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
+            margin-right: 8px;
+            background: #3498db;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .CodeMirror {
+                height: 400px;
+                font-size: 12px;
+            }
+            
+            .status-bar {
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
         }
     </style>
-</head>
-
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Collaborative CodeMirror Editor</h1>
-            <div class="status">
-                <div id="statusDot" class="status-dot disconnected"></div>
-                <span id="statusText">Disconnected</span>
+    </head>
+    
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>
+                    <div class="header-icon">✏️</div>
+                    Collaborative Editor
+                </h1>
             </div>
-        </div>
-
-        <div style="padding: 20px;">
-            <div class="user-input">
-                <input type="text" id="usernameInput" placeholder="Enter your name" />
-                <button onclick="setUsername()">Join Session</button>
+    
+            <div class="status-bar">
+                <div class="connection-status">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="connectionStatus">Connecting...</span>
+                </div>
+                <div>
+                    <span class="user-indicator"></span>
+                    <span id="clientInfo">Client ID: Connecting...</span>
+                </div>
             </div>
-
+    
             <div class="editor-container">
-                <div id="editor"></div>
+                <textarea id="editor"></textarea>
+            </div>
+    
+            <div class="footer">
+                Open this page in multiple tabs or browsers to see real-time collaboration in action!
             </div>
         </div>
+    
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/markdown/markdown.min.js"></script>
+    
+        <script>
+            class CollaborativeEditor {
+                constructor() {
+                    this.clientId = 'client_' + Math.random().toString(36).substr(2, 9);
+                    this.isConnected = false;
+                    this.localVersion = 0;
+                    this.pendingOperations = [];
+                    this.isApplyingRemoteChange = false;
 
-        <div class="users-list">
-            <strong>Connected Users:</strong>
-            <div id="usersList"></div>
-        </div>
-    </div>
-
-    <!-- <script type="module" src="./main.js"></script> -->
-    <script>
-        // This HTML file works with the main.js module
-        // The CollaborativeEditor class is imported and initialized from main.js
-
-
-        // Custom cursor widget for CodeMirror 6
-        class CursorWidget extends HTMLElement {
-            constructor(username, colorIndex) {
-                super();
-                this.username = username;
-                this.colorIndex = colorIndex;
-            }
-
-            connectedCallback() {
-                this.className = `cm-remote-cursor cm-remote-cursor-${this.colorIndex}`;
-                this.innerHTML = `<div class="cursor-tooltip">${this.username}</div>`;
-            }
-        }
-
-        // Define custom element
-        if (typeof customElements !== 'undefined') {
-            customElements.define('cursor-widget', CursorWidget);
-        }
-
-        // Global variables
-        let editor;
-
-        // Initialize editor when page loads
-        window.addEventListener('DOMContentLoaded', () => {
-            editor = new cm6.CollaborativeEditor();
-        });
-
-        // Global function for joining
-        function setUsername() {
-            const username = document.getElementById('usernameInput').value.trim();
-            if (username && editor) {
-                editor.connect(username);
-                document.getElementById('usernameInput').disabled = true;
-                document.querySelector('.user-input button').disabled = true;
-                document.querySelector('.user-input button').textContent = 'Connected';
-            }
-        }
-
-        // Allow Enter key to join
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('usernameInput').addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') {
-                    setUsername();
+                    this.initializeEditor();
+                    this.initializeWebSocket();
+                    this.updateConnectionStatus();
                 }
-            });
+
+                initializeEditor() {
+                    this.editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+                        mode: 'markdown',
+                        theme: 'material',
+                        lineNumbers: true,
+                        lineWrapping: true,
+                        indentUnit: 2,
+                        tabSize: 2,
+                        autoCloseBrackets: true,
+                        matchBrackets: true,
+                        styleActiveLine: true,
+                        viewportMargin: Infinity
+                    });
+
+                    // Handle local changes
+                    this.editor.on('beforeChange', (cm, change) => {
+                        if (this.isApplyingRemoteChange) return;
+
+                        // Convert change to operation
+                        const operation = this.changeToOperation(change);
+                        if (operation) {
+                            this.sendOperation(operation);
+                        }
+                });
+
+                // Handle cursor changes
+                this.editor.on('cursorActivity', () => {
+                    if (this.isApplyingRemoteChange) return;
+                    this.sendCursorPosition();
+                });
+            }
+
+                initializeWebSocket() {
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.host}/ws?clientId=${this.clientId}`;
+
+                    this.ws = new WebSocket(wsUrl);
+
+                    this.ws.onopen = () => {
+                        this.isConnected = true;
+                        this.updateConnectionStatus();
+                        console.log('Connected to collaborative editor');
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        const operation = JSON.parse(event.data);
+                        this.handleRemoteOperation(operation);
+                    };
+
+                    this.ws.onclose = () => {
+                        this.isConnected = false;
+                        this.updateConnectionStatus();
+                        console.log('Disconnected from collaborative editor');
+
+                        // Attempt to reconnect after 3 seconds
+                        setTimeout(() => {
+                            if (!this.isConnected) {
+                                this.initializeWebSocket();
+                            }
+                    }, 3000);
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    this.isConnected = false;
+                    this.updateConnectionStatus();
+                };
+            }
+
+                changeToOperation(change) {
+                    const from = this.editor.indexFromPos(change.from);
+                    const to = this.editor.indexFromPos(change.to);
+
+                    if (change.text.length === 1 && change.text[0] === '' && from !== to) {
+                        // Deletion
+                        return {
+                            type: 'delete',
+                            position: from,
+                            length: to - from,
+                            version: this.localVersion
+                        };
+                    } else if (change.text.length > 0) {
+                        // Insertion or replacement
+                        const text = change.text.join('\n');
+                        const operations = [];
+
+                        if (from !== to) {
+                            // First delete existing text
+                            operations.push({
+                                type: 'delete',
+                                position: from,
+                                length: to - from,
+                                version: this.localVersion
+                            });
+                        }
+            
+                    if (text) {
+                        // Then insert new text
+                        operations.push({
+                            type: 'insert',
+                            position: from,
+                            text: text,
+                            version: this.localVersion
+                        });
+                    }
+                    
+                    return operations.length === 1 ? operations[0] : operations;
+                }
+                    
+                return null;
+            }
+
+                sendOperation(operation) {
+                    if (!this.isConnected || !this.ws) return;
+
+                const operations = Array.isArray(operation) ? operation : [operation];
+                
+                operations.forEach(op => {
+                    op.clientId = this.clientId;
+                    this.ws.send(JSON.stringify(op));
+                });
+            }
+
+                sendCursorPosition() {
+                    if (!this.isConnected || !this.ws) return;
+
+                const cursor = this.editor.getCursor();
+                const position = this.editor.indexFromPos(cursor);
+                
+                const operation = {
+                    type: 'cursor',
+                    position: position,
+                    clientId: this.clientId
+                };
+
+                this.ws.send(JSON.stringify(operation));
+            }
+
+                handleRemoteOperation(operation) {
+                    this.isApplyingRemoteChange = true;
+
+                    try {
+                        switch (operation.type) {
+                            case 'init':
+                                this.editor.setValue(operation.text);
+                                this.localVersion = operation.version;
+                                break;
+
+                            case 'insert':
+                                const insertPos = this.editor.posFromIndex(operation.position);
+                                this.editor.replaceRange(operation.text, insertPos);
+                                break;
+
+                            case 'delete':
+                                const deleteFrom = this.editor.posFromIndex(operation.position);
+                                const deleteTo = this.editor.posFromIndex(operation.position + operation.length);
+                                this.editor.replaceRange('', deleteFrom, deleteTo);
+                                break;
+
+                            case 'cursor':
+                                this.updateRemoteCursor(operation.clientId, operation.position);
+                                break;
+                        }
+                    } finally {
+                        this.isApplyingRemoteChange = false;
+                    }
+            }
+
+                updateRemoteCursor(clientId, position) {
+                    // Remove existing cursor for this client
+                    const existingCursor = document.querySelector(`[data-client="${clientId}"]`);
+                    if (existingCursor) {
+                        existingCursor.remove();
+                }
+
+                // Don't show our own cursor
+                if (clientId === this.clientId) return;
+
+                // Add new cursor
+                const pos = this.editor.posFromIndex(position);
+                const coords = this.editor.charCoords(pos, 'local');
+
+                const cursor = document.createElement('div');
+                cursor.className = 'collaborative-cursor';
+                cursor.setAttribute('data-client', clientId);
+                cursor.style.left = coords.left + 'px';
+                cursor.style.top = coords.top + 'px';
+                cursor.style.borderColor = this.getClientColor(clientId);
+
+                const label = document.createElement('div');
+                label.className = 'cursor-label';
+                label.textContent = clientId;
+                label.style.backgroundColor = this.getClientColor(clientId);
+
+                cursor.appendChild(label);
+                this.editor.getWrapperElement().appendChild(cursor);
+
+                // Remove cursor after 3 seconds of inactivity
+                setTimeout(() => {
+                    const stillExists = document.querySelector(`[data-client="${clientId}"]`);
+                    if (stillExists === cursor) {
+                        cursor.remove();
+                    }
+                }, 3000);
+            }
+
+                getClientColor(clientId) {
+                    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
+                    let hash = 0;
+                    for (let i = 0; i < clientId.length; i++) {
+                        hash = clientId.charCodeAt(i) + ((hash << 5) - hash);
+                    }
+                    return colors[Math.abs(hash) % colors.length];
+                }
+
+                updateConnectionStatus() {
+                    const statusDot = document.getElementById('statusDot');
+                    const statusText = document.getElementById('connectionStatus');
+                    const clientInfo = document.getElementById('clientInfo');
+
+                if (this.isConnected) {
+                    statusDot.classList.add('connected');
+                    statusText.textContent = 'Connected';
+                    clientInfo.textContent = `Client ID: ${this.clientId}`;
+                } else {
+                    statusDot.classList.remove('connected');
+                    statusText.textContent = 'Disconnected - Reconnecting...';
+                    clientInfo.textContent = 'Client ID: Offline';
+                }
+            }
+        }
+
+                // Initialize the collaborative editor when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new CollaborativeEditor();
         });
     </script>
 </body>
-
 </html>
