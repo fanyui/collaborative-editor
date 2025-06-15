@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative CodeMirror Editor</title>
+    <script src="./dist/cm6.bundle.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2563eb;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+
+        .status-dot.disconnected {
+            background: #ef4444;
+        }
+
+        .user-input {
+            margin-bottom: 10px;
+        }
+
+        .user-input input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        .user-input button {
+            padding: 8px 16px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .user-input button:hover {
+            background: #1d4ed8;
+        }
+
+        .user-input button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .editor-container {
+            border: 1px solid #e5e7eb;
+            min-height: 500px;
+        }
+
+        .cm-editor {
+            height: 500px;
+        }
+
+        .cm-focused {
+            outline: none;
+        }
+
+        /* Remote cursor styles */
+        .cm-remote-cursor {
+            position: absolute;
+            border-left: 2px solid;
+            height: 1.2em;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .cm-remote-cursor-0 {
+            border-color: #ef4444;
+        }
+
+        .cm-remote-cursor-1 {
+            border-color: #10b981;
+        }
+
+        .cm-remote-cursor-2 {
+            border-color: #f59e0b;
+        }
+
+        .cm-remote-cursor-3 {
+            border-color: #8b5cf6;
+        }
+
+        .cm-remote-cursor-4 {
+            border-color: #06b6d4;
+        }
+
+        .cm-remote-selection {
+            background-color: rgba(59, 130, 246, 0.2);
+            pointer-events: none;
+        }
+
+        .cm-remote-selection-0 {
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .cm-remote-selection-1 {
+            background-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .cm-remote-selection-2 {
+            background-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .cm-remote-selection-3 {
+            background-color: rgba(139, 92, 246, 0.2);
+        }
+
+        .cm-remote-selection-4 {
+            background-color: rgba(6, 182, 212, 0.2);
+        }
+
+        .cursor-tooltip {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            position: absolute;
+            top: -25px;
+            left: 0;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .cursor-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .users-list {
+            padding: 15px 20px;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .user-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-right: 15px;
+            padding: 4px 8px;
+            background: white;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .user-color {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Collaborative CodeMirror Editor</h1>
+            <div class="status">
+                <div id="statusDot" class="status-dot disconnected"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+        </div>
+
+        <div style="padding: 20px;">
+            <div class="user-input">
+                <input type="text" id="usernameInput" placeholder="Enter your name" />
+                <button onclick="setUsername()">Join Session</button>
+            </div>
+
+            <div class="editor-container">
+                <div id="editor"></div>
+            </div>
+        </div>
+
+        <div class="users-list">
+            <strong>Connected Users:</strong>
+            <div id="usersList"></div>
+        </div>
+    </div>
+
+    <!-- <script type="module" src="./main.js"></script> -->
+    <script>
+        // This HTML file works with the main.js module
+        // The CollaborativeEditor class is imported and initialized from main.js
+
+
+        // Custom cursor widget for CodeMirror 6
+        class CursorWidget extends HTMLElement {
+            constructor(username, colorIndex) {
+                super();
+                this.username = username;
+                this.colorIndex = colorIndex;
+            }
+
+            connectedCallback() {
+                this.className = `cm-remote-cursor cm-remote-cursor-${this.colorIndex}`;
+                this.innerHTML = `<div class="cursor-tooltip">${this.username}</div>`;
+            }
+        }
+
+        // Define custom element
+        if (typeof customElements !== 'undefined') {
+            customElements.define('cursor-widget', CursorWidget);
+        }
+
+        // Global variables
+        let editor;
+
+        // Initialize editor when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            editor = new cm6.CollaborativeEditor();
+        });
+
+        // Global function for joining
+        function setUsername() {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (username && editor) {
+                editor.connect(username);
+                document.getElementById('usernameInput').disabled = true;
+                document.querySelector('.user-input button').disabled = true;
+                document.querySelector('.user-input button').textContent = 'Connected';
+            }
+        }
+
+        // Allow Enter key to join
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('usernameInput').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    setUsername();
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
