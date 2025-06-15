@@ -13,6 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/anyword-hint.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/go/go.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/vim/vim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -192,6 +193,14 @@
                     <span id="connectionStatus">Connecting...</span>
                 </div>
                 <div>
+                  <label for="languageMode" style="margin-right: 5px;">Language:</label>
+                  <select id="languageMode" name="languageMode">
+                    <option value="go">Go</option>
+                    <option value="markdown">Markdown</option>
+                    <option value="javascript">JavaScript</option>
+                  </select>
+                </div>
+                <div>
                     <span class="user-indicator"></span>
                     <span id="clientInfo">Client ID: Connecting...</span>
                 </div>
@@ -223,7 +232,7 @@
 
                 initializeEditor() {
                     this.editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
-                        mode: 'go', // Changed from 'markdown'
+                        mode: 'markdown', // Changed from 'markdown'
                         theme: 'material',
                         lineNumbers: true,
                         lineWrapping: true,
@@ -278,6 +287,23 @@
                         });
                     }
                 });
+
+                // Language mode selection
+                const languageModeSelect = document.getElementById('languageMode');
+                languageModeSelect.addEventListener('change', (event) => {
+                    const selectedValue = event.target.value;
+                    this.editor.setOption('mode', selectedValue);
+                    // Ensure the dropdown reflects the initial mode (markdown)
+                    // This is useful if the editor's default mode is different from the first option
+                    // or if we want to programmatically set the mode and keep UI in sync.
+                    // However, since 'markdown' is now the default and it's an option,
+                    // this explicit setting of languageModeSelect.value might be redundant
+                    // unless the order of options changes or initial mode is dynamic.
+                    // For now, we'll ensure CodeMirror's mode is set.
+                    // If CodeMirror needs specific mode files loaded dynamically, that would be an addition here.
+                });
+                // Set the initial value of the dropdown to the editor's mode
+                languageModeSelect.value = this.editor.getOption('mode');
             }
 
                 initializeWebSocket() {
